@@ -1,0 +1,149 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@theme {
+  --font-sans: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Instrument Serif", "Times New Roman", serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  --color-bg: #0a0b0a;
+  --color-bg-elevated: #121412;
+  --color-surface: #181b18;
+  --color-surface-2: #202420;
+  --color-fg: #e8ebe4;
+  --color-muted: #9aa194;
+  --color-subtle: #6b7166;
+  --color-border: #262a26;
+  --color-border-strong: #3a4038;
+  --color-accent: #d7dcd2;
+  --color-accent-fg: #0a0b0a;
+  --color-sage: #6d7568;
+  --color-sage-fg: #c5cec2;
+  --color-clay: #8f4a42;
+  --color-clay-fg: #e8c4bf;
+  --color-ring: #d7dcd2;
+
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-fg);
+  --color-card: var(--color-bg-elevated);
+  --color-card-foreground: var(--color-fg);
+  --color-primary: var(--color-accent);
+  --color-primary-foreground: var(--color-accent-fg);
+  --color-secondary: var(--color-surface);
+  --color-secondary-foreground: var(--color-fg);
+  --color-muted-foreground: var(--color-muted);
+  --color-destructive: var(--color-clay);
+  --color-input: var(--color-border);
+  --color-popover: var(--color-bg-elevated);
+  --color-popover-foreground: var(--color-fg);
+
+  --color-domain-fundamentals: #8fa88f;
+  --color-domain-standing: #b8a078;
+  --color-domain-guard: #7aa0b8;
+  --color-domain-half: #c49a6c;
+  --color-domain-passing: #9a8fb0;
+  --color-domain-pins: #c47a6e;
+  --color-domain-back: #6a9aaa;
+  --color-domain-sweeps: #8fba8a;
+  --color-domain-subs: #c46e6e;
+  --color-domain-escapes: #7a9a8a;
+  --color-domain-legs: #b88a6a;
+  --color-domain-concepts: #a0a49a;
+
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius: 12px;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-quick: 150ms;
+  --motion-fast: 250ms;
+  --motion-slow: 400ms;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    touch-action: manipulation;
+  }
+
+  html,
+  body,
+  #app {
+    min-height: 100%;
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--color-bg);
+    color: var(--color-fg);
+    overscroll-behavior: none;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.55;
+  }
+
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+    font-family: var(--font-display);
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  * {
+    border-color: var(--color-border);
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-accent) 28%, transparent);
+    color: var(--color-fg);
+  }
+}
+
+@layer utilities {
+  .font-display {
+    font-family: var(--font-display);
+  }
+
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .overscroll-contain {
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
