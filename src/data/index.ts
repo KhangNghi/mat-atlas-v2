@@ -48,6 +48,8 @@ export const STATS = {
   skills: SKILLS.length,
   connections: EDGES.length,
   chains: CHAINS.length,
+  techniques: SKILLS.filter((s) => s.kind === "technique" || s.kind === "position" || s.kind === "concept")
+    .length,
 };
 
 export function childrenOf(id: string): Skill[] {
@@ -66,6 +68,12 @@ export function ancestorsOf(id: string): Skill[] {
   return out;
 }
 
+export function siblingsOf(id: string): Skill[] {
+  const s = SKILL_BY_ID[id];
+  if (!s?.parent) return [];
+  return childrenOf(s.parent);
+}
+
 export function neighborsOf(id: string): Skill[] {
   const s = SKILL_BY_ID[id];
   if (!s) return [];
@@ -78,15 +86,45 @@ export function neighborsOf(id: string): Skill[] {
   return [...ids].map((x) => SKILL_BY_ID[x]).filter(Boolean) as Skill[];
 }
 
+function subseq(hay: string, q: string): boolean {
+  let i = 0;
+  for (const ch of hay) {
+    if (ch === q[i]) i += 1;
+    if (i === q.length) return true;
+  }
+  return false;
+}
+
 export function searchSkills(q: string): Skill[] {
   const n = q.trim().toLowerCase();
-  if (!n) return SKILLS.filter((s) => s.kind !== "hub");
-  return SKILLS.filter((s) => {
-    const hay = [s.name, s.summary, ...(s.aka ?? []), s.kind, s.domain].join(" ").toLowerCase();
-    return hay.includes(n);
-  });
+  const pool = SKILLS.filter((s) => s.kind !== "hub");
+  if (!n) return pool;
+  const scored = pool
+    .map((s) => {
+      const name = s.name.toLowerCase();
+      const aka = (s.aka ?? []).join(" ").toLowerCase();
+      let score = 0;
+      if (name === n) score = 1000;
+      else if (name.startsWith(n)) score = 850;
+      else if (name.includes(n)) score = 620;
+      else if (aka.includes(n)) score = 540;
+      else if (s.summary.toLowerCase().includes(n)) score = 280;
+      else if (s.domain.includes(n) || s.kind.includes(n)) score = 180;
+      else if (subseq(name, n) && n.length >= 3) score = 120;
+      return { s, score };
+    })
+    .filter((x) => x.score > 0);
+  scored.sort((a, b) => b.score - a.score || a.s.name.localeCompare(b.s.name));
+  return scored.map((x) => x.s);
 }
 
 export function skillsInDomain(d: DomainId): Skill[] {
   return SKILLS.filter((s) => s.domain === d);
+}
+
+export function passesGi(s: Skill, gi: "all" | "gi" | "nogi"): boolean {
+  if (gi === "all") return true;
+  if (s.kind === "hub" || s.kind === "domain" || s.kind === "group") return true;
+  if (gi === "gi") return s.gi !== "nogi";
+  return s.gi !== "gi";
 }

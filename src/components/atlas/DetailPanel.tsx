@@ -1,6 +1,7 @@
-import { Bookmark, X } from "lucide-react";
+import { Bookmark, ChevronLeft, ChevronRight, MapPinned, X } from "lucide-react";
 import { CHAINS } from "@/data/chains";
-import { SKILL_BY_ID, ancestorsOf, childrenOf, neighborsOf } from "@/data";
+import { SKILL_BY_ID, ancestorsOf, childrenOf, neighborsOf, siblingsOf } from "@/data";
+import { canDrill } from "@/data/layout";
 import { videoOf } from "@/data/videos";
 import { DOMAIN_META, GI_LABEL, KIND_LABEL, LEVEL_LABEL } from "@/data/types";
 import { TechniqueClip } from "./TechniqueClip";
@@ -13,28 +14,44 @@ import type { Skill } from "@/data/types";
 export function DetailPanel() {
   const id = useAtlas((s) => s.selectedId);
   const select = useAtlas((s) => s.select);
+  const focusOn = useAtlas((s) => s.focusOn);
+  const reveal = useAtlas((s) => s.reveal);
   const toggleBookmark = useAtlas((s) => s.toggleBookmark);
   const bookmarks = useAtlas((s) => s.bookmarks);
   const status = useAtlas((s) => (id ? s.status[id] : undefined));
   const setStatus = useAtlas((s) => s.setStatus);
+  const setHighlightedChain = useAtlas((s) => s.setHighlightedChain);
+  const setView = useAtlas((s) => s.setView);
+  const focusId = useAtlas((s) => s.focusId);
   const skill = id ? SKILL_BY_ID[id] : null;
   if (!skill) return null;
 
   const saved = bookmarks.includes(skill.id);
   const domain = skill.domain === "hub" ? "fundamentals" : skill.domain;
   const from = (skill.from ?? []).map((x) => SKILL_BY_ID[x]).filter(Boolean) as Skill[];
-  const connected = neighborsOf(skill.id).slice(0, 12);
+  const connected = neighborsOf(skill.id).slice(0, 14);
   const kids = childrenOf(skill.id);
   const crumbs = [...ancestorsOf(skill.id)].reverse();
   const chains = CHAINS.filter((c) => c.steps.includes(skill.id));
-  const hasVideo = Boolean(videoOf(skill.id));
+  const sibs = siblingsOf(skill.id);
+  const idx = sibs.findIndex((s) => s.id === skill.id);
+  const prev = idx > 0 ? sibs[idx - 1] : null;
+  const next = idx >= 0 && idx < sibs.length - 1 ? sibs[idx + 1] : null;
+  const drillable = canDrill(skill.id);
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-bg-elevated">
+    <div key={skill.id} className="atlas-panel flex h-full min-h-0 flex-col bg-bg-elevated">
       <div className="flex items-start gap-2 border-b border-border px-4 py-3">
         <div className="min-w-0 flex-1">
           <p className="text-xs text-subtle">
-            {crumbs.map((c) => c.name).join(" / ")}
+            {crumbs.map((c, i) => (
+              <span key={c.id}>
+                {i > 0 ? " / " : null}
+                <button type="button" className="hover:text-fg" onClick={() => focusOn(c.id)}>
+                  {c.name}
+                </button>
+              </span>
+            ))}
           </p>
           <h2 className="font-display text-2xl leading-tight tracking-tight text-fg">{skill.name}</h2>
           <p className="mt-1 text-xs text-muted">
@@ -56,13 +73,21 @@ export function DetailPanel() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4">
-        <span
-          className="mb-3 inline-block size-2 rounded-full"
-          style={{ background: domainColor(domain) }}
-        />
+        <span className="mb-3 inline-block size-2 rounded-full" style={{ background: domainColor(domain) }} />
         <p className="text-sm text-fg">{skill.summary}</p>
 
-        {hasVideo ? <TechniqueClip id={skill.id} /> : null}
+        {videoOf(skill.id) ? <TechniqueClip id={skill.id} /> : null}
+
+        {drillable && focusId !== skill.id ? (
+          <Button className="mt-4 w-full" onClick={() => focusOn(skill.id)}>
+            Step into {skill.name}
+          </Button>
+        ) : !drillable ? (
+          <Button variant="outline" className="mt-4 w-full" onClick={() => reveal(skill.id)}>
+            <MapPinned className="size-4" />
+            Show on map
+          </Button>
+        ) : null}
 
         {skill.mechanics && skill.mechanics.length > 0 ? (
           <section className="mt-5">
@@ -89,6 +114,10 @@ export function DetailPanel() {
           </section>
         ) : null}
 
+        {skill.aka && skill.aka.length > 0 ? (
+          <p className="mt-4 text-xs text-subtle">Also: {skill.aka.join(", ")}</p>
+        ) : null}
+
         <section className="mt-5">
           <h3 className="text-xs font-medium uppercase tracking-wider text-subtle">On the mat</h3>
           <div className="mt-2 flex gap-1">
@@ -110,15 +139,9 @@ export function DetailPanel() {
           </div>
         </section>
 
-        {from.length > 0 ? (
-          <ChipRow title="From" items={from} onPick={select} />
-        ) : null}
-        {connected.length > 0 ? (
-          <ChipRow title="Connected" items={connected} onPick={select} />
-        ) : null}
-        {kids.length > 0 ? (
-          <ChipRow title="Inside" items={kids} onPick={select} />
-        ) : null}
+        {from.length > 0 ? <ChipRow title="From" items={from} onPick={reveal} /> : null}
+        {connected.length > 0 ? <ChipRow title="Connected" items={connected} onPick={reveal} /> : null}
+        {kids.length > 0 ? <ChipRow title="Inside" items={kids} onPick={reveal} /> : null}
 
         {chains.length > 0 ? (
           <section className="mt-5">
@@ -128,8 +151,11 @@ export function DetailPanel() {
                 <li key={c.id}>
                   <button
                     type="button"
-                    onClick={() => select(c.steps[0] ?? null)}
-                    className="w-full rounded-md border border-border bg-surface px-3 py-2 text-left"
+                    onClick={() => {
+                      setHighlightedChain(c.id);
+                      setView("ladder");
+                    }}
+                    className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-left hover:border-border-strong"
                   >
                     <p className="text-sm font-medium text-fg">{c.name}</p>
                     <p className="mt-0.5 text-xs text-muted">{c.blurb}</p>
@@ -140,6 +166,32 @@ export function DetailPanel() {
           </section>
         ) : null}
       </div>
+
+      {sibs.length > 1 ? (
+        <div className="flex items-center gap-2 border-t border-border px-3 py-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!prev}
+            onClick={() => prev && select(prev.id)}
+            aria-label="Previous sibling"
+          >
+            <ChevronLeft className="size-4" />
+            <span className="hidden max-w-[7rem] truncate sm:inline">{prev?.name ?? "—"}</span>
+          </Button>
+          <span className="ml-auto" />
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!next}
+            onClick={() => next && select(next.id)}
+            aria-label="Next sibling"
+          >
+            <span className="hidden max-w-[7rem] truncate sm:inline">{next?.name ?? "—"}</span>
+            <ChevronRight className="size-4" />
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

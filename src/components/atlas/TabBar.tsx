@@ -4,7 +4,7 @@ import { useAtlas, type ViewMode } from "@/store/atlas";
 
 const TABS: { id: ViewMode; label: string; icon: typeof MapIcon }[] = [
   { id: "map", label: "Map", icon: MapIcon },
-  { id: "ladder", label: "Ladder", icon: Waypoints },
+  { id: "ladder", label: "Chains", icon: Waypoints },
   { id: "library", label: "Library", icon: List },
 ];
 

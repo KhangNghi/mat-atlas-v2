@@ -5,24 +5,24 @@ import { useAtlas } from "@/store/atlas";
 import { cn } from "@/lib/utils";
 
 export function Legend() {
-  const domainFilter = useAtlas((s) => s.domainFilter);
-  const setDomainFilter = useAtlas((s) => s.setDomainFilter);
+  const focusOn = useAtlas((s) => s.focusOn);
+  const focusId = useAtlas((s) => s.focusId);
 
   return (
-    <aside className="pointer-events-none absolute bottom-3 left-3 z-10 hidden max-w-xs md:block">
-      <div className="pointer-events-auto rounded-lg border border-border bg-bg/90 p-3 backdrop-blur-sm">
-        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-subtle">Domains</p>
-        <ul className="grid grid-cols-2 gap-x-4 gap-y-1">
+    <aside className="pointer-events-none absolute bottom-3 right-3 z-10 hidden w-44 md:block">
+      <div className="pointer-events-auto rounded-xl border border-border bg-bg/90 p-3 backdrop-blur-sm">
+        <p className="mb-2 text-xs font-medium uppercase tracking-wider text-subtle">Jump</p>
+        <ul className="grid grid-cols-1 gap-0.5">
           {DOMAINS.map((d) => {
             const id = d.domain === "hub" ? "fundamentals" : d.domain;
-            const on = domainFilter === id;
+            const on = focusId === d.id;
             return (
               <li key={d.id}>
                 <button
                   type="button"
-                  onClick={() => setDomainFilter(on ? "all" : (id as DomainId))}
+                  onClick={() => focusOn(d.id)}
                   className={cn(
-                    "flex w-full items-center gap-2 py-0.5 text-left text-xs",
+                    "flex w-full items-center gap-2 rounded-sm px-1 py-1 text-left text-xs",
                     on ? "text-fg" : "text-muted hover:text-fg",
                   )}
                 >

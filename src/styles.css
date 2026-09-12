@@ -59,8 +59,10 @@
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --motion-micro: 80ms;
   --motion-quick: 150ms;
   --motion-fast: 250ms;
+  --motion-medium: 350ms;
   --motion-slow: 400ms;
 }
 
@@ -138,6 +140,52 @@
   }
 }
 
+@keyframes atlas-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.95;
+  }
+}
+
+@keyframes atlas-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes atlas-panel {
+  from {
+    opacity: 0;
+    transform: translateX(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.map-pulse {
+  animation: atlas-pulse 1.8s var(--ease-smooth-out) infinite;
+}
+
+.atlas-enter {
+  animation: atlas-enter var(--motion-slow) var(--ease-smooth-out) both;
+}
+
+.atlas-panel {
+  animation: atlas-panel var(--motion-fast) var(--ease-smooth-out) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -145,5 +193,11 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  .map-pulse,
+  .atlas-enter,
+  .atlas-panel {
+    animation: none;
   }
 }

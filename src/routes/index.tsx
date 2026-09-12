@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import { AtlasKeys } from "@/components/atlas/AtlasKeys";
 import { DetailPanel } from "@/components/atlas/DetailPanel";
 import { IntroCard } from "@/components/atlas/IntroCard";
 import { LadderView } from "@/components/atlas/LadderView";
@@ -17,7 +18,7 @@ export const Route = createFileRoute("/")({ component: Home });
 function Home() {
   const view = useAtlas((s) => s.view);
   const selectedId = useAtlas((s) => s.selectedId);
-  const showDesktopPanel = Boolean(selectedId) && view !== "library";
+  const showDesktopPanel = Boolean(selectedId);
 
   useEffect(() => {
     void useAtlas.persist.rehydrate();
@@ -25,6 +26,7 @@ function Home() {
 
   return (
     <div className="flex h-dvh flex-col overflow-hidden bg-bg text-fg">
+      <AtlasKeys />
       <TopBar />
       <IntroCard />
       <div className="relative flex min-h-0 flex-1">
@@ -41,7 +43,7 @@ function Home() {
         </div>
 
         {showDesktopPanel ? (
-          <div className="relative hidden h-full w-96 shrink-0 border-l border-border bg-bg-elevated md:block">
+          <div className="relative hidden h-full w-[24rem] shrink-0 border-l border-border bg-bg-elevated md:block">
             <DetailPanel />
           </div>
         ) : null}

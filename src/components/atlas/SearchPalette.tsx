@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, X } from "lucide-react";
+import { CHAINS } from "@/data/chains";
 import { searchSkills, SKILL_BY_ID } from "@/data";
 import { KIND_LABEL } from "@/data/types";
 import { Input } from "@/components/ui/input";
+import { domainColor } from "@/lib/domain-color";
 import { useAtlas } from "@/store/atlas";
+import { cn } from "@/lib/utils";
 
 export function SearchPalette() {
   const open = useAtlas((s) => s.paletteOpen);
@@ -11,8 +14,11 @@ export function SearchPalette() {
   const query = useAtlas((s) => s.query);
   const setQuery = useAtlas((s) => s.setQuery);
   const reveal = useAtlas((s) => s.reveal);
+  const setView = useAtlas((s) => s.setView);
+  const setHighlightedChain = useAtlas((s) => s.setHighlightedChain);
   const recents = useAtlas((s) => s.recents);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [active, setActive] = useState(0);
   const [vv, setVv] = useState({ top: 0, height: 0 });
 
   useEffect(() => {
@@ -27,7 +33,6 @@ export function SearchPalette() {
         e.preventDefault();
         setOpen(true);
       }
-      if (e.key === "Escape") setOpen(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -35,6 +40,7 @@ export function SearchPalette() {
 
   useEffect(() => {
     if (open) {
+      setActive(0);
       const t = window.setTimeout(() => inputRef.current?.focus(), 20);
       return () => window.clearTimeout(t);
     }
@@ -54,15 +60,57 @@ export function SearchPalette() {
     };
   }, [open]);
 
-  const results = useMemo(() => {
-    if (query.trim()) return searchSkills(query).slice(0, 20);
+  const skills = useMemo(() => {
+    if (query.trim()) return searchSkills(query).slice(0, 18);
     return recents.map((id) => SKILL_BY_ID[id]).filter(Boolean).slice(0, 10);
   }, [query, recents]);
 
+  const chains = useMemo(() => {
+    const n = query.trim().toLowerCase();
+    if (!n) return [];
+    return CHAINS.filter((c) => `${c.name} ${c.blurb}`.toLowerCase().includes(n)).slice(0, 4);
+  }, [query]);
+
+  type Row =
+    | { type: "skill"; id: string }
+    | { type: "chain"; id: string };
+
+  const rows: Row[] = [
+    ...skills.filter(Boolean).map((s) => ({ type: "skill" as const, id: s!.id })),
+    ...chains.map((c) => ({ type: "chain" as const, id: c.id })),
+  ];
+
+  function pick(row: Row) {
+    if (row.type === "skill") reveal(row.id);
+    else {
+      const c = CHAINS.find((x) => x.id === row.id);
+      setHighlightedChain(row.id);
+      setView("ladder");
+      setOpen(false);
+      if (c?.steps[0]) reveal(c.steps[0]);
+    }
+  }
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActive((i) => Math.min(rows.length - 1, i + 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActive((i) => Math.max(0, i - 1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      const row = rows[active];
+      if (row) pick(row);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      setOpen(false);
+    }
+  }
+
   if (!open) return null;
 
-  const compactStyle =
-    vv.height > 0 ? { top: vv.top, height: vv.height } : undefined;
+  const compactStyle = vv.height > 0 ? { top: vv.top, height: vv.height } : undefined;
 
   return (
     <div
@@ -80,8 +128,12 @@ export function SearchPalette() {
           <Input
             ref={inputRef}
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search the map"
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setActive(0);
+            }}
+            onKeyDown={onKeyDown}
+            placeholder="Search skills, aka, chains"
             className="h-12 border-0 bg-transparent focus-visible:ring-0"
           />
           <button
@@ -94,27 +146,64 @@ export function SearchPalette() {
           </button>
         </div>
         <ul className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
-          {results.length === 0 ? (
+          {!query.trim() && recents.length > 0 ? (
+            <li className="px-3 pb-1 pt-2 text-xs uppercase tracking-wider text-subtle">Recent</li>
+          ) : null}
+          {rows.length === 0 ? (
             <li className="px-3 py-8 text-center text-sm text-muted">No matches.</li>
           ) : (
-            results.map((s) =>
-              s ? (
+            rows.map((row, i) => {
+              if (row.type === "chain") {
+                const c = CHAINS.find((x) => x.id === row.id);
+                if (!c) return null;
+                return (
+                  <li key={`c-${c.id}`}>
+                    <button
+                      type="button"
+                      onClick={() => pick(row)}
+                      className={cn(
+                        "flex w-full flex-col rounded-md px-3 py-2.5 text-left",
+                        i === active ? "bg-surface" : "hover:bg-surface",
+                      )}
+                    >
+                      <span className="text-sm text-fg">{c.name}</span>
+                      <span className="text-xs text-subtle">Chain · {c.steps.length} steps</span>
+                    </button>
+                  </li>
+                );
+              }
+              const s = SKILL_BY_ID[row.id];
+              if (!s) return null;
+              const domain = s.domain === "hub" ? "fundamentals" : s.domain;
+              return (
                 <li key={s.id}>
                   <button
                     type="button"
-                    onClick={() => reveal(s.id)}
-                    className="flex w-full flex-col rounded-md px-3 py-2.5 text-left hover:bg-surface"
+                    onClick={() => pick(row)}
+                    className={cn(
+                      "flex w-full items-start gap-2 rounded-md px-3 py-2.5 text-left",
+                      i === active ? "bg-surface" : "hover:bg-surface",
+                    )}
                   >
-                    <span className="text-sm text-fg">{s.name}</span>
-                    <span className="text-xs text-subtle">
-                      {KIND_LABEL[s.kind]} · {s.summary.slice(0, 80)}
+                    <span
+                      className="mt-1.5 size-2 shrink-0 rounded-full"
+                      style={{ background: domainColor(domain) }}
+                    />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm text-fg">{s.name}</span>
+                      <span className="block truncate text-xs text-subtle">
+                        {KIND_LABEL[s.kind]} · {s.summary}
+                      </span>
                     </span>
                   </button>
                 </li>
-              ) : null,
-            )
+              );
+            })
           )}
         </ul>
+        <p className="hidden border-t border-border px-3 py-2 text-xs text-subtle md:block">
+          ↑↓ to move · Enter to open · Esc to close
+        </p>
       </div>
     </div>
   );
