@@ -18,6 +18,11 @@ function isLeaf(n: LaidOutNode) {
   return n.skill.kind === "technique" || n.skill.kind === "position" || n.skill.kind === "concept";
 }
 
+function nodeFromEvent(target: EventTarget | null): string | null {
+  if (!(target instanceof Element)) return null;
+  return target.closest("[data-node]")?.getAttribute("data-node") ?? null;
+}
+
 export function MapCanvas() {
   const selectedId = useAtlas((s) => s.selectedId);
   const select = useAtlas((s) => s.select);
@@ -68,6 +73,10 @@ export function MapCanvas() {
   }, [nodes, giFilter]);
 
   const byId = useMemo(() => Object.fromEntries(visible.map((n) => [n.id, n])), [visible]);
+  const drawNodes = useMemo(
+    () => [...visible].sort((a, b) => a.r - b.r),
+    [visible],
+  );
 
   const chainIds = useMemo(() => {
     if (!highlightedChain) return new Set<string>();
@@ -128,12 +137,15 @@ export function MapCanvas() {
     fly(to);
   }, [focusId, flyNonce, size.w, size.h, visible, fly]);
 
+  function isChrome(target: EventTarget | null) {
+    return target instanceof Element && Boolean(target.closest("[data-hud]"));
+  }
+
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    const t = e.target as Element | null;
-    if (t?.closest?.("[data-node]")) return;
+    moved.current = false;
+    if (isChrome(e.target) || nodeFromEvent(e.target)) return;
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    moved.current = false;
     anim.current = null;
     inertia.current = 0;
     if (pointers.current.size === 2) {
@@ -221,14 +233,7 @@ export function MapCanvas() {
     return () => el.removeEventListener("wheel", onWheelNative);
   }, [apply, size.w, size.h]);
 
-  function onBackgroundClick() {
-    if (moved.current) return;
-    select(null);
-  }
-
-  function onNodeClick(n: LaidOutNode, e: React.MouseEvent) {
-    e.stopPropagation();
-    if (moved.current) return;
+  function activate(n: LaidOutNode) {
     if (n.id === focusId) {
       select(n.id);
       return;
@@ -244,8 +249,21 @@ export function MapCanvas() {
     select(n.id);
   }
 
+  function onNodeActivate(n: LaidOutNode, e: React.SyntheticEvent) {
+    e.stopPropagation();
+    if (moved.current) return;
+    activate(n);
+  }
+
+  function onSvgClick(e: React.MouseEvent<SVGSVGElement>) {
+    if (moved.current) return;
+    if (nodeFromEvent(e.target)) return;
+    select(null);
+  }
+
   const parentSkill = layout.parentId ? SKILL_BY_ID[layout.parentId] : null;
   const parentY = -(layout.orbitR + 56);
+  const hitMin = compact ? 22 : 18;
 
   return (
     <div
@@ -255,9 +273,8 @@ export function MapCanvas() {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerUp}
-      onClick={onBackgroundClick}
     >
-      <svg className="h-full w-full" aria-label="BJJ mind map">
+      <svg className="h-full w-full" aria-label="BJJ mind map" onClick={onSvgClick}>
         {mounted && size.w > 40 ? (
         <>
         <defs>
@@ -267,19 +284,33 @@ export function MapCanvas() {
           </radialGradient>
         </defs>
         <g ref={gRef}>
-          <circle r={layout.orbitR} fill="none" stroke="var(--color-border)" strokeWidth="1" opacity="0.7" />
-          <circle r={Math.max(40, layout.orbitR * 0.45)} fill="url(#atlas-glow)" />
+          <circle
+            r={layout.orbitR}
+            fill="none"
+            stroke="var(--color-border)"
+            strokeWidth="1"
+            opacity="0.7"
+            pointerEvents="none"
+          />
+          <circle
+            r={Math.max(40, layout.orbitR * 0.45)}
+            fill="url(#atlas-glow)"
+            pointerEvents="none"
+          />
 
           {parentSkill ? (
             <g
               data-node={parentSkill.id}
               transform={`translate(0 ${parentY})`}
               className="cursor-pointer"
+              onPointerDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
+                if (moved.current) return;
                 goUp();
               }}
             >
+              <circle r={20} fill="none" pointerEvents="all" />
               <circle
                 r={14}
                 fill="var(--color-bg-elevated)"
@@ -294,6 +325,7 @@ export function MapCanvas() {
                 y2={-parentY - (byId[focusId]?.r ?? 40)}
                 stroke="var(--color-border)"
                 strokeDasharray="3 4"
+                pointerEvents="none"
               />
               <text
                 y={-22}
@@ -320,11 +352,12 @@ export function MapCanvas() {
                 stroke={onChain ? colorOf(n) : "var(--color-border-strong)"}
                 strokeWidth={onChain ? 1.8 : 1}
                 opacity={isLeaf(n) && n.r < 8 ? 0.25 : 0.55}
+                pointerEvents="none"
               />
             );
           })}
 
-          {visible.map((n) => {
+          {drawNodes.map((n) => {
             const fill = colorOf(n);
             const on = selectedId === n.id;
             const focused = n.id === focusId;
@@ -349,15 +382,38 @@ export function MapCanvas() {
               compact || n.skill.kind !== "domain" && n.skill.kind !== "group"
                 ? 0
                 : childrenOf(n.id).length;
+            const hitR = Math.max(n.r + 2, hitMin);
+            const labelW = Math.min(
+              150,
+              Math.max(...label.map((l) => l.length), 4) * 6.4 + 12,
+            );
+            const labelH = label.length * 12 + (kids > 0 && !tiny ? 12 : 0) + 10;
+            const labelX =
+              anchor === "start" ? lx - 6 : anchor === "end" ? lx - labelW + 6 : lx - labelW / 2;
+            const labelY = ly - 14;
 
             return (
               <g
                 key={n.id}
                 data-node={n.id}
+                role="button"
+                aria-label={n.skill.name}
                 transform={`translate(${n.x} ${n.y})`}
                 className="cursor-pointer"
-                onClick={(e) => onNodeClick(n, e)}
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => onNodeActivate(n, e)}
               >
+                <circle r={hitR} fill="none" pointerEvents="all" />
+                {outside && label.length > 0 ? (
+                  <rect
+                    x={labelX}
+                    y={labelY}
+                    width={labelW}
+                    height={labelH}
+                    fill="none"
+                    pointerEvents="all"
+                  />
+                ) : null}
                 {on ? (
                   <circle
                     r={n.r + 7}
@@ -366,6 +422,7 @@ export function MapCanvas() {
                     strokeWidth="1.2"
                     className="map-pulse"
                     opacity="0.7"
+                    pointerEvents="none"
                   />
                 ) : null}
                 <circle
@@ -376,9 +433,15 @@ export function MapCanvas() {
                   opacity={tiny && !on && !onChain ? 0.7 : 1}
                 />
                 {st === "solid" ? (
-                  <circle r={Math.max(2, n.r * 0.22)} fill={fill} />
+                  <circle r={Math.max(2, n.r * 0.22)} fill={fill} pointerEvents="none" />
                 ) : st === "training" ? (
-                  <circle r={Math.max(2, n.r * 0.22)} fill="none" stroke={fill} strokeWidth="1.2" />
+                  <circle
+                    r={Math.max(2, n.r * 0.22)}
+                    fill="none"
+                    stroke={fill}
+                    strokeWidth="1.2"
+                    pointerEvents="none"
+                  />
                 ) : null}
                 {label.map((line, i) => (
                   <text
@@ -396,7 +459,6 @@ export function MapCanvas() {
                       paintOrder: "stroke",
                       stroke: "var(--color-bg)",
                       strokeWidth: 3,
-                      pointerEvents: "none",
                     }}
                   >
                     {line}
@@ -414,7 +476,6 @@ export function MapCanvas() {
                       paintOrder: "stroke",
                       stroke: "var(--color-bg)",
                       strokeWidth: 3,
-                      pointerEvents: "none",
                     }}
                   >
                     {kids}

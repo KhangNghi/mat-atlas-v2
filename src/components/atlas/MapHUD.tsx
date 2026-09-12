@@ -21,10 +21,13 @@ export function MapHUD({
 
   return (
     <>
-      <div className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-3">
+      <div data-hud className="pointer-events-none absolute inset-x-0 top-3 z-10 flex justify-center px-3">
         <nav
+          data-hud
           className="pointer-events-auto flex max-w-full items-center gap-1 overflow-x-auto rounded-full border border-border bg-bg/90 px-2 py-1 shadow-sm backdrop-blur-sm no-scrollbar"
           aria-label="Location"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
           {crumbs.map((c, i) => (
             <span key={c.id} className="flex shrink-0 items-center gap-1">
@@ -45,10 +48,16 @@ export function MapHUD({
       </div>
 
       <div
+        data-hud
         className="pointer-events-none absolute bottom-3 right-3 z-10 flex flex-col gap-2 md:left-3 md:right-auto"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        <div className="pointer-events-auto flex flex-col overflow-hidden rounded-lg border border-border bg-bg/90 shadow-sm backdrop-blur-sm">
+        <div
+          data-hud
+          className="pointer-events-auto flex flex-col overflow-hidden rounded-lg border border-border bg-bg/90 shadow-sm backdrop-blur-sm"
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
+        >
           <Button variant="ghost" size="icon-sm" aria-label="Zoom in" onClick={() => onZoom(1)}>
             <Plus className="size-4" />
           </Button>
@@ -67,7 +76,7 @@ export function MapHUD({
         {skill ? (
           <p className="pointer-events-none hidden max-w-[12rem] text-xs text-subtle md:block">
             {skill.kind === "hub"
-              ? "Click a domain to step in"
+              ? "Click a name to open it"
               : `${count} skills · Esc steps back`}
           </p>
         ) : null}
