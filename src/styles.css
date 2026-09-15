@@ -64,6 +64,7 @@
   --motion-fast: 250ms;
   --motion-medium: 350ms;
   --motion-slow: 400ms;
+  --motion-morph: 460ms;
 }
 
 @layer base {
@@ -174,6 +175,90 @@
   }
 }
 
+/* Map: layout morphs (drill in / step back) and first paint */
+@keyframes atlas-node-enter {
+  from {
+    transform: translate(var(--from-x, 0px), var(--from-y, 0px));
+    opacity: var(--from-o, 0);
+  }
+}
+
+@keyframes atlas-ghost {
+  to {
+    transform: translate(var(--to-x, 0px), var(--to-y, 0px));
+    opacity: 0;
+  }
+}
+
+@keyframes atlas-edge-enter {
+  from {
+    transform: scale(0.04);
+    opacity: 0;
+  }
+}
+
+@keyframes atlas-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes atlas-sheet-up {
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@keyframes atlas-sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.atlas-map-enter {
+  animation: atlas-fade-in var(--motion-slow) ease-out both;
+}
+
+.atlas-node {
+  animation: atlas-node-enter var(--motion-morph) var(--ease-smooth-out) both;
+  will-change: transform;
+}
+
+.atlas-ghost {
+  pointer-events: none;
+  animation: atlas-ghost var(--motion-morph) var(--ease-smooth-out) forwards;
+}
+
+.atlas-edge {
+  transform-origin: 0 0;
+  animation: atlas-edge-enter var(--motion-morph) var(--ease-smooth-out) both;
+}
+
+.atlas-orbit {
+  animation: atlas-fade-in var(--motion-morph) ease-out both;
+}
+
+.atlas-fade-in {
+  animation: atlas-fade-in var(--motion-morph) ease-out both;
+}
+
+.atlas-sheet {
+  animation: atlas-sheet-up var(--motion-medium) var(--ease-smooth-out) both;
+  box-shadow: 0 -12px 40px rgb(0 0 0 / 0.45);
+}
+
+.atlas-sheet-full {
+  animation: atlas-sheet-in var(--motion-fast) var(--ease-smooth-out) both;
+}
+
 .map-pulse {
   animation: atlas-pulse 1.8s var(--ease-smooth-out) infinite;
 }
@@ -197,7 +282,20 @@
 
   .map-pulse,
   .atlas-enter,
-  .atlas-panel {
+  .atlas-panel,
+  .atlas-map-enter,
+  .atlas-node,
+  .atlas-edge,
+  .atlas-orbit,
+  .atlas-fade-in,
+  .atlas-sheet,
+  .atlas-sheet-full {
     animation: none;
   }
+
+  /* Ghosts exist only to fade out; without motion they must simply not show. */
+  .atlas-ghost {
+    display: none;
+  }
+
 }

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useLayoutEffect } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { AtlasKeys } from "@/components/atlas/AtlasKeys";
 import { DetailPanel } from "@/components/atlas/DetailPanel";
@@ -15,12 +15,16 @@ import { useAtlas } from "@/store/atlas";
 
 export const Route = createFileRoute("/")({ component: Home });
 
+// Restore saved progress before the first client paint so the intro card and
+// bookmarks don't flash into a different state a frame after load.
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
+
 function Home() {
   const view = useAtlas((s) => s.view);
   const selectedId = useAtlas((s) => s.selectedId);
   const showDesktopPanel = Boolean(selectedId);
 
-  useEffect(() => {
+  useIsoLayoutEffect(() => {
     void useAtlas.persist.rehydrate();
   }, []);
 

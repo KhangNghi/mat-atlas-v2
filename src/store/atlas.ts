@@ -3,6 +3,7 @@ import { persist } from "zustand/middleware";
 import { SKILL_BY_ID } from "@/data";
 import { drillFocusFor } from "@/data/layout";
 import type { DomainId, Level } from "@/data/types";
+import { isCompactViewport } from "@/lib/utils";
 
 export type ViewMode = "map" | "ladder" | "library";
 export type Proficiency = "unseen" | "training" | "solid";
@@ -71,9 +72,12 @@ export const useAtlas = create<AtlasState>()(
         })),
       focusOn: (id) => {
         if (!SKILL_BY_ID[id]) return;
+        // On a phone the card is a sheet that covers the ring you just opened,
+        // so stepping in only moves the map; tap the centre node for its card.
+        const openCard = !isCompactViewport();
         set((s) => ({
           focusId: id,
-          selectedId: id,
+          selectedId: openCard ? id : null,
           recents: rec(id, s.recents),
           paletteOpen: false,
           flyNonce: s.flyNonce + 1,
@@ -107,7 +111,7 @@ export const useAtlas = create<AtlasState>()(
         }
         set((s) => ({
           focusId: parent,
-          selectedId: parent,
+          selectedId: isCompactViewport() ? null : parent,
           flyNonce: s.flyNonce + 1,
         }));
       },

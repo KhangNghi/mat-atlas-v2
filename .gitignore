@@ -16,3 +16,4 @@ attachments/
 .node_modules.lock
 .DS_Store
 *.local
+.claude/
